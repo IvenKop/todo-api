@@ -26,10 +26,17 @@ export default function createDb() {
     );
   `);
 
-  const cnt = db.prepare("SELECT COUNT(1) as c FROM users").get() as { c: number };
-  if (cnt.c === 0) {
-    db.prepare("INSERT INTO users(id,email,password) VALUES(?,?,?)")
-      .run("u1", "user@mail.com", "Aa1!abcd");
+  const row = db
+    .prepare<unknown[], { c: number }>("SELECT COUNT(1) as c FROM users")
+    .get();
+
+  const usersCount = row?.c ?? 0;
+  if (usersCount === 0) {
+    db.prepare("INSERT INTO users(id,email,password) VALUES(?,?,?)").run(
+      "u1",
+      "user@mail.com",
+      "Aa1!abcd",
+    );
   }
 
   return db;
