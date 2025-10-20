@@ -1,43 +1,12 @@
-import Database from "better-sqlite3";
-import path from "node:path";
-import fs from "node:fs";
+import { Pool } from "pg";
+import { env } from "../config/env";
 
-export type DB = Database.Database;
+export const pool = new Pool({
+  connectionString: env.DATABASE_URL,
+});
 
-export default function createDb() {
-  const dir = path.resolve(process.cwd(), "server", "data");
-  fs.mkdirSync(dir, { recursive: true });
+pool.on("error", (error: Error) => {
+  console.error("Unexpected PostgreSQL client error", error);
+});
 
-  const db = new Database(path.join(dir, "todo.db"));
-  db.pragma("journal_mode = WAL");
-
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS todos (
-      id TEXT PRIMARY KEY,
-      text TEXT NOT NULL,
-      completed INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      password TEXT NOT NULL
-    );
-  `);
-
-  const row = db
-    .prepare<unknown[], { c: number }>("SELECT COUNT(1) as c FROM users")
-    .get();
-
-  const usersCount = row?.c ?? 0;
-  if (usersCount === 0) {
-    db.prepare("INSERT INTO users(id,email,password) VALUES(?,?,?)").run(
-      "u1",
-      "user@mail.com",
-      "Aa1!abcd",
-    );
-  }
-
-  return db;
-}
+export type DbPool = Pool;
