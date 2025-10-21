@@ -1,11 +1,11 @@
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
-import auth from "./routes/auth";
-import todos from "./routes/todos";
-import { requireAuth } from "./middleware/auth";
-import { initDb } from "./db";
-import { env } from "./config/env";
+import auth from "./routes/auth.js";
+import todos from "./routes/todos.js";
+import { requireAuth } from "./middleware/auth.js";
+import { initDb } from "./db/index.js";
+import { env } from "./config/env.js";
 
 const app = express();
 app.use(cors());
