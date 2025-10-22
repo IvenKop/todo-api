@@ -1,12 +1,17 @@
-import { Pool } from "pg";
+import knexFactory, { type Knex } from "knex";
 import { env } from "../config/env.js";
 
-export const pool = new Pool({
-  connectionString: env.DATABASE_URL,
+export const knex = knexFactory({
+  client: "pg",
+  connection: env.DATABASE_URL,
+  pool: {
+    min: 0,
+    max: 10,
+  },
 });
 
-pool.on("error", (error: Error) => {
-  console.error("Unexpected PostgreSQL client error", error);
+knex.on("query-error", (error) => {
+  console.error("Unexpected database error", error);
 });
 
-export type DbPool = Pool;
+export type DbConnection = Knex;
