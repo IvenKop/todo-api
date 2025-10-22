@@ -7,7 +7,7 @@ import { createTodosRepository } from "./queries/todos.js";
 import { createUsersRepository } from "./queries/users.js";
 
 export async function runMigrations(connection: Knex) {
-  await connection.raw('CREATE EXTENSION IF NOT EXISTS "pgcrypto"'); // Required for gen_random_uuid()
+  await connection.raw('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
 
   const hasUsers = await connection.schema.hasTable("users");
   if (!hasUsers) {
