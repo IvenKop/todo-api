@@ -1,70 +1,86 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import type { UserRecord } from "./queries/users.js";
-import { pool } from "../lib/db.js";
+import type { Knex } from "knex";
+import { knex } from "../lib/db.js";
+import { BaseModel } from "./models/base-model.js";
+import { TodoModel } from "./models/todo-model.js";
+import { UserModel } from "./models/user-model.js";
 import { createTodosRepository } from "./queries/todos.js";
 import { createUsersRepository } from "./queries/users.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+export async function runMigrations(connection: Knex) {
+  await connection.raw('CREATE EXTENSION IF NOT EXISTS "pgcrypto"'); // Required for gen_random_uuid()
 
-export async function runMigrations() {
-  const schemaPath = path.resolve(__dirname, "schema.sql");
-  const sql = await fs.readFile(schemaPath, "utf8");
-  await pool.query(sql);
-}
-
-export async function runSeed() {
-  await pool.query("TRUNCATE TABLE todos, users RESTART IDENTITY CASCADE");
-
-  const seedUser = {
-    email: "user@mail.com",
-    password: "Aa1!abcd",
-  };
-
-  const { rows } = await pool.query<UserRecord>(
-    `INSERT INTO users (email, password)
-     VALUES ($1, $2)
-     ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password
-     RETURNING id, email, password`,
-    [seedUser.email, seedUser.password],
-  );
-
-  const user = rows[0];
-
-  const todoSeeds = [
-    { text: "Review backlog items", completed: false },
-    { text: "Prepare sprint demo", completed: true },
-    { text: "Update documentation", completed: false },
-  ];
-
-  for (const todo of todoSeeds) {
-    await pool.query(
-      `INSERT INTO todos (text, completed)
-       VALUES ($1, $2)`,
-      [todo.text, todo.completed],
-    );
+  const hasUsers = await connection.schema.hasTable("users");
+  if (!hasUsers) {
+    await connection.schema.createTable("users", (table) => {
+      table.uuid("id").primary().defaultTo(connection.raw("gen_random_uuid()"));
+      table.text("email").notNullable().unique();
+      table.text("password").notNullable();
+    });
   }
 
-  return {
-    userId: user.id,
-    todosInserted: todoSeeds.length,
-  };
+  const hasTodos = await connection.schema.hasTable("todos");
+  if (!hasTodos) {
+    await connection.schema.createTable("todos", (table) => {
+      table.uuid("id").primary().defaultTo(connection.raw("gen_random_uuid()"));
+      table.text("text").notNullable();
+      table.boolean("completed").notNullable().defaultTo(false);
+      table
+        .timestamp("created_at", { useTz: true })
+        .notNullable()
+        .defaultTo(connection.fn.now());
+    });
+  }
+}
+
+export async function runSeed(connection: Knex) {
+  return connection.transaction(async (trx) => {
+    await TodoModel.query(trx).delete();
+    await UserModel.query(trx).delete();
+
+    const seedUser = {
+      email: "user@mail.com",
+      password: "Aa1!abcd"
+    };
+
+    await UserModel.query(trx)
+      .insert(seedUser)
+      .onConflict("email")
+      .merge();
+
+    const user = await UserModel.query(trx).findOne({ email: seedUser.email });
+    if (!user) {
+      throw new Error("Failed to seed default user");
+    }
+
+    const todoSeeds = [
+      { text: "Review backlog items", completed: false },
+      { text: "Prepare sprint demo", completed: true },
+      { text: "Update documentation", completed: false }
+    ];
+
+    await TodoModel.query(trx).insertGraph(todoSeeds);
+
+    return {
+      userId: user.id,
+      todosInserted: todoSeeds.length
+    };
+  });
 }
 
 export async function initDb() {
-  await runMigrations();
+  BaseModel.knex(knex);
 
-  const todos = createTodosRepository(pool);
-  const users = createUsersRepository(pool);
+  await runMigrations(knex);
+
+  const todos = createTodosRepository();
+  const users = createUsersRepository();
 
   await users.ensureSeedUser();
 
   return {
-    pool,
+    knex,
     todos,
-    users,
+    users
   };
 }
 
