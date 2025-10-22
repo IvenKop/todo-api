@@ -1,10 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { UserRecord } from "./queries/users";
-import { pool } from "../lib/db";
-import { createTodosRepository } from "./queries/todos";
-import { createUsersRepository } from "./queries/users";
+import type { UserRecord } from "./queries/users.js";
+import { pool } from "../lib/db.js";
+import { createTodosRepository } from "./queries/todos.js";
+import { createUsersRepository } from "./queries/users.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { Router } from "express";
-import { LoginBodySchema } from "../schemas/auth";
-import type { Db } from "../db";
+import { LoginBodySchema } from "../schemas/auth.js";
+import type { Db } from "../db/index.js";
 
 const router = Router();
 

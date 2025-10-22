@@ -1,8 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import { Router } from "express";
 import { z } from "zod";
-import type { Db } from "../db";
-import type { TodoFilter } from "../db/queries/todos";
+import type { Db } from "../db/index.js";
+import type { TodoFilter } from "../db/queries/todos.js";
 
 const router = Router();
 

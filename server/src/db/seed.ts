@@ -1,5 +1,5 @@
-import { pool } from "../lib/db";
-import { runMigrations, runSeed } from ".";
+import { pool } from "../lib/db.js";
+import { runMigrations, runSeed } from "./index.js";
 
 async function main() {
   try {
