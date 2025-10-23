@@ -1,76 +1,56 @@
+// server/src/db/index.ts
 import type { Knex } from "knex";
-import { knex } from "../lib/db.js";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const { migrate } = require("node-pg-migrate");
+import { env } from "../config/env.js";
+import { knex as knexConn } from "../lib/db.js";
 import { BaseModel } from "./models/base-model.js";
-import { TodoModel } from "./models/todo-model.js";
-import { UserModel } from "./models/user-model.js";
 import { createTodosRepository } from "./queries/todos.js";
 import { createUsersRepository } from "./queries/users.js";
 
-export async function runMigrations(connection: Knex) {
-  await connection.raw('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-  const hasUsers = await connection.schema.hasTable("users");
-  if (!hasUsers) {
-    await connection.schema.createTable("users", (table) => {
-      table.uuid("id").primary().defaultTo(connection.raw("gen_random_uuid()"));
-      table.text("email").notNullable().unique();
-      table.text("password").notNullable();
-    });
-  }
+const migrationsDir = path.join(__dirname, "migrations");
 
-  const hasTodos = await connection.schema.hasTable("todos");
-  if (!hasTodos) {
-    await connection.schema.createTable("todos", (table) => {
-      table.uuid("id").primary().defaultTo(connection.raw("gen_random_uuid()"));
-      table.text("text").notNullable();
-      table.boolean("completed").notNullable().defaultTo(false);
-      table
-        .timestamp("created_at", { useTz: true })
-        .notNullable()
-        .defaultTo(connection.fn.now());
-    });
-  }
+type MigrationDirection = "up" | "down";
+interface RunMigrationsOptions {
+  direction?: MigrationDirection;
+  count?: number;
 }
 
-export async function runSeed(connection: Knex) {
-  return connection.transaction(async (trx) => {
-    await TodoModel.query(trx).delete();
-    await UserModel.query(trx).delete();
+export async function runMigrations(opts: RunMigrationsOptions = {}) {
+  const direction: MigrationDirection = opts.direction ?? "up";
 
-    const seedUser = {
-      email: "user@mail.com",
-      password: "Aa1!abcd"
-    };
+  await migrate({
+    databaseUrl: env.DATABASE_URL,
+    dir: migrationsDir,
+    direction,
+    migrationsTable: "pgmigrations",
+    count: opts.count,
+    logger: console,
+  } as any);
+}
 
-    await UserModel.query(trx)
-      .insert(seedUser)
-      .onConflict("email")
-      .merge();
+export async function runSeed(knex: Knex) {
+  const users = createUsersRepository();
+  const todos = createTodosRepository();
 
-    const user = await UserModel.query(trx).findOne({ email: seedUser.email });
-    if (!user) {
-      throw new Error("Failed to seed default user");
-    }
+  await users.ensureSeedUser();
 
-    const todoSeeds = [
-      { text: "Review backlog items", completed: false },
-      { text: "Prepare sprint demo", completed: true },
-      { text: "Update documentation", completed: false }
-    ];
+  const inserted = [];
+  inserted.push(await todos.create("Buy milk"));
+  inserted.push(await todos.create("Read docs"));
+  inserted.push(await todos.create("Ship feature"));
 
-    await TodoModel.query(trx).insertGraph(todoSeeds);
-
-    return {
-      userId: user.id,
-      todosInserted: todoSeeds.length
-    };
-  });
+  return { todosInserted: inserted.length };
 }
 
 export async function initDb() {
-  BaseModel.knex(knex);
+  BaseModel.knex(knexConn);
 
-  await runMigrations(knex);
+  await runMigrations({ direction: "up" });
 
   const todos = createTodosRepository();
   const users = createUsersRepository();
@@ -78,9 +58,9 @@ export async function initDb() {
   await users.ensureSeedUser();
 
   return {
-    knex,
+    knex: knexConn,
     todos,
-    users
+    users,
   };
 }
 
