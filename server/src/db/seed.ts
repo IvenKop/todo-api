@@ -1,18 +1,21 @@
-import { pool } from "../lib/db.js";
+import { knex } from "../lib/db.js";
 import { runMigrations, runSeed } from "./index.js";
+import { BaseModel } from "./models/base-model.js";
 
 async function main() {
   try {
-    console.info("Running database migrations before seeding…");
-    await runMigrations();
+    BaseModel.knex(knex);
 
-    const summary = await runSeed();
+    console.info("Running database migrations before seeding…");
+    await runMigrations(knex);
+
+    const summary = await runSeed(knex);
     console.info("Seed completed:", summary);
   } catch (error) {
     console.error("Database seed failed", error);
     process.exitCode = 1;
   } finally {
-    await pool.end();
+    await knex.destroy();
   }
 }
 
