@@ -5,7 +5,9 @@ export class TodoModel extends BaseModel {
 
   declare id: string;
   text!: string;
-  completed!: boolean;
+
+  completed: boolean = false;
+
   created_at!: string;
 
   static override get relationMappings() {
@@ -19,10 +21,19 @@ export class TodoModel extends BaseModel {
       properties: {
         id: { type: "string", format: "uuid" },
         text: { type: "string", minLength: 1, maxLength: 200 },
-        completed: { type: "boolean" },
+        completed: { type: "boolean", default: false },
         created_at: { type: "string", format: "date-time" }
       },
       additionalProperties: false
     };
+  }
+
+  override $beforeInsert() {
+    if (this.completed === undefined || this.completed === null) {
+      this.completed = false;
+    }
+    if (!this.created_at) {
+      this.created_at = new Date().toISOString();
+    }
   }
 }

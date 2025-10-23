@@ -27,7 +27,7 @@ export function createUsersRepository(): UsersRepository {
       await UserModel.query()
         .insert({ email: "user@mail.com", password: "Aa1!abcd" })
         .onConflict("email")
-        .merge();
+        .ignore();
     }
   };
 }
