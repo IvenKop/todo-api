@@ -20,14 +20,20 @@ export function createUsersRepository(): UsersRepository {
     async findByCredentials(email, password) {
       const user = await UserModel.query().findOne({ email });
       if (!user) return null;
-      const ph = (user as any).password_hash as string | undefined;
-      if (ph) {
+
+      const ph = (user as any).password_hash as string | null | undefined;
+      if (ph && ph.length > 0) {
         const ok = await verifyPassword(password, ph);
         return ok ? toRecord(user) : null;
-      } else {
-        if (isDev && user.password === password) return toRecord(user);
-        return null;
       }
+
+      if (isDev) {
+        if ((user as any).password === password) {
+          return toRecord(user);
+        }
+      }
+
+      return null;
     },
 
     async findByEmail(email) {
