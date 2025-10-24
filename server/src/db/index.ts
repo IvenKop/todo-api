@@ -24,21 +24,28 @@ export async function runMigrations(opts: RunMigrationsOptions = {}) {
   const direction: MigrationDirection = opts.direction ?? "up";
   const count = opts.count;
   if (isDev && flags.resetDbOnStart) {
-    const pool = new Pool({ connectionString: env.DATABASE_URL });
+    
+  const pool = new Pool({
+    connectionString: env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
     await pool.query(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;`);
     await pool.end();
   }
   const require = createRequire(import.meta.url);
   const { runner } = require("node-pg-migrate");
   await runner({
-    databaseUrl: env.DATABASE_URL,
-    dir: migrationsDir,
-    direction,
-    migrationsTable: "pgmigrations",
-    count,
-    verbose: true,
-    ignorePattern: ""
-  } as any);
+  databaseUrl: {
+    connectionString: env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  },
+  dir: migrationsDir,
+  direction,
+  migrationsTable: "pgmigrations",
+  count,
+  verbose: true,
+  ignorePattern: ""
+} as any);
 }
 
 export async function runSeed(knex: Knex) {
