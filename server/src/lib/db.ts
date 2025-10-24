@@ -1,13 +1,14 @@
 import knexFactory, { type Knex } from "knex";
-import { env } from "../config/env.js";
+import { env, isProd } from "../config/env.js";
+
+const connection = isProd
+  ? { connectionString: env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
+  : env.DATABASE_URL;
 
 export const knex = knexFactory({
   client: "pg",
-  connection: env.DATABASE_URL,
-  pool: {
-    min: 0,
-    max: 10,
-  },
+  connection,
+  pool: { min: 0, max: 10 }
 });
 
 knex.on("query-error", (error) => {
