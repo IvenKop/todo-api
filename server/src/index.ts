@@ -1,7 +1,9 @@
+// src/index.ts
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import { createServer } from "http";
+
 import auth from "./routes/auth.js";
 import todos from "./routes/todos.js";
 import { requireAuth } from "./middleware/auth.js";
@@ -33,8 +35,10 @@ void (async () => {
     app.set("db", db);
 
     const PORT = Number(env.PORT ?? 4000);
+    console.log("[boot] preparing to listen on port", PORT);
+
     httpServer.listen(PORT, () => {
-      console.log(`API + Socket.IO listening on http://localhost:${PORT}`);
+      console.log(`API + Socket.io listening on http://localhost:${PORT}`);
     });
   } catch (error) {
     console.error("Failed to initialize application", error);
