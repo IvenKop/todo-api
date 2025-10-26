@@ -7,7 +7,7 @@ async function main() {
     BaseModel.knex(knex);
 
     console.info("Running database migrations before seeding…");
-    await runMigrations(knex);
+    await runMigrations();
 
     const summary = await runSeed(knex);
     console.info("Seed completed:", summary);

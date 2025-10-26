@@ -6,6 +6,7 @@ export class UserModel extends BaseModel {
   declare id: string;
   email!: string;
   password!: string;
+  password_hash?: string;
 
   static override get relationMappings() {
     return {};
@@ -18,7 +19,8 @@ export class UserModel extends BaseModel {
       properties: {
         id: { type: "string", format: "uuid" },
         email: { type: "string", format: "email" },
-        password: { type: "string", minLength: 8 }
+        password: { type: "string", minLength: 8 },
+        password_hash: { type: "string" }
       },
       additionalProperties: false
     };
