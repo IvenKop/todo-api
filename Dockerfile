@@ -7,6 +7,7 @@ RUN npm ci
 
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
+COPY server/package.json ./package.json
 COPY server/tsconfig.json ./tsconfig.json
 COPY server/src ./src
 RUN npm run build
