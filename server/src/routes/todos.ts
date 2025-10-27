@@ -3,6 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import type { Db } from "../db/index.js";
 import type { TodoFilter } from "../db/queries/todos.js";
+import { getIO } from "../realtime/socket.js";
 
 const router = Router();
 
@@ -39,6 +40,9 @@ router.post(
       const { text } = CreateTodoBodySchema.parse(req.body);
       const db = req.app.get("db") as Db;
       const todo = await db.todos.create(text);
+
+      getIO().emit("todos:invalidate");
+
       res.status(201).json(todo);
     } catch (error) {
       next(error);
@@ -63,6 +67,9 @@ router.patch(
         res.status(404).json({ error: "Not found" });
         return;
       }
+
+      getIO().emit("todo:upsert", todo);
+
       res.json(todo);
     } catch (error) {
       next(error);
@@ -76,6 +83,12 @@ router.delete(
     try {
       const db = req.app.get("db") as Db;
       const deleted = await db.todos.delete(req.params.id);
+
+      if (deleted) {
+        getIO().emit("todos:invalidate");
+        getIO().emit("todo:removed", { id: req.params.id });
+      }
+
       res.status(deleted ? 204 : 404).end();
     } catch (error) {
       next(error);
@@ -89,6 +102,9 @@ router.delete(
     try {
       const db = req.app.get("db") as Db;
       await db.todos.clearCompleted();
+
+      getIO().emit("todos:invalidate");
+
       res.status(204).end();
     } catch (error) {
       next(error);
