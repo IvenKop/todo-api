@@ -11,7 +11,9 @@ const EnvSchema = z.object({
   RESET_DB_ON_START: z.string().optional(),
   MIGRATE_ON_START: z.string().optional(),
   ACCESS_TOKEN_SECRET: z.string().optional(),
-  ACCESS_TOKEN_TTL: z.string().optional().default("15m")
+  ACCESS_TOKEN_TTL: z.string().optional().default("15m"),
+  REFRESH_TOKEN_SECRET: z.string().optional(),
+  REFRESH_TOKEN_TTL: z.string().optional().default("7d")
 });
 
 const parsed = EnvSchema.safeParse(process.env);
