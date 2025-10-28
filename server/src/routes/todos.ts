@@ -41,7 +41,7 @@ router.post(
       const db = req.app.get("db") as Db;
       const todo = await db.todos.create(text);
 
-      getIO().emit("todos:invalidate");
+      getIO().emit("todo:created", todo);
 
       res.status(201).json(todo);
     } catch (error) {
@@ -68,7 +68,7 @@ router.patch(
         return;
       }
 
-      getIO().emit("todo:upsert", todo);
+      getIO().emit("todo:updated", todo);
 
       res.json(todo);
     } catch (error) {
@@ -85,7 +85,6 @@ router.delete(
       const deleted = await db.todos.delete(req.params.id);
 
       if (deleted) {
-        getIO().emit("todos:invalidate");
         getIO().emit("todo:removed", { id: req.params.id });
       }
 

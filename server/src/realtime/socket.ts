@@ -9,8 +9,9 @@ type ServerToClientEvents = {
   hello: (payload: { message: string; time: string }) => void;
   // prod events
   "todos:invalidate": () => void;
-  "todo:upsert": (todo: TodoDTO) => void;
-  "todo:removed": (payload: { id: string }) => void; 
+  "todo:created": (todo: TodoDTO) => void;
+  "todo:updated": (todo: TodoDTO) => void;
+  "todo:removed": (payload: { id: string }) => void;
 };
 
 type ClientToServerEvents = {
