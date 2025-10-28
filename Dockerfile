@@ -5,16 +5,17 @@ FROM base AS deps
 COPY server/package.json server/package-lock.json ./
 RUN npm ci
 
-FROM deps AS build
+FROM base AS build
+COPY --from=deps /app/node_modules ./node_modules
+COPY server/package.json ./package.json
 COPY server/tsconfig.json ./tsconfig.json
 COPY server/src ./src
 RUN npm run build
 
 FROM base AS production
 ENV NODE_ENV=production
-WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY server/package.json ./
-EXPOSE 4000
-CMD ["npm", "run", "start"]
+EXPOSE 10000
+CMD ["node", "dist/index.js"]
