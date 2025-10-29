@@ -21,8 +21,16 @@ router.get(
     try {
       const { filter, page, limit } = ListQuerySchema.parse(req.query);
       const db = req.app.get("db") as Db;
+
       const { items, total } = await db.todos.list({ filter, page, limit });
-      res.json({ items, total, page, limit });
+      const { items: all } = await db.todos.list({ filter: "all", page: 1, limit: 9999 });
+      const counts = {
+        total: all.length,
+        active: all.filter(t => !t.completed).length,
+        completed: all.filter(t => t.completed).length,
+      };
+
+      res.json({ items, total, page, limit, counts });
     } catch (error) {
       next(error);
     }
@@ -40,9 +48,7 @@ router.post(
       const { text } = CreateTodoBodySchema.parse(req.body);
       const db = req.app.get("db") as Db;
       const todo = await db.todos.create(text);
-
       getIO().emit("todo:created", todo);
-
       res.status(201).json(todo);
     } catch (error) {
       next(error);
@@ -67,9 +73,7 @@ router.patch(
         res.status(404).json({ error: "Not found" });
         return;
       }
-
       getIO().emit("todo:updated", todo);
-
       res.json(todo);
     } catch (error) {
       next(error);
@@ -83,11 +87,7 @@ router.delete(
     try {
       const db = req.app.get("db") as Db;
       const deleted = await db.todos.delete(req.params.id);
-
-      if (deleted) {
-        getIO().emit("todo:removed", { id: req.params.id });
-      }
-
+      if (deleted) getIO().emit("todo:removed", { id: req.params.id });
       res.status(deleted ? 204 : 404).end();
     } catch (error) {
       next(error);
@@ -101,9 +101,7 @@ router.delete(
     try {
       const db = req.app.get("db") as Db;
       await db.todos.clearCompleted();
-
       getIO().emit("todos:invalidate");
-
       res.status(204).end();
     } catch (error) {
       next(error);
