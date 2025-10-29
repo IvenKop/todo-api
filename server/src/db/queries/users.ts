@@ -9,6 +9,7 @@ export interface UsersRepository {
   ensureSeedUser(): Promise<void>;
   findByEmail(email: string): Promise<UserRecord | null>;
   findById(id: string): Promise<UserRecord | null>;
+  register(email: string, password: string): Promise<UserRecord>;
 }
 
 const toRecord = (user: UserModel): UserRecord => ({
@@ -57,6 +58,14 @@ export function createUsersRepository(): UsersRepository {
         .insert({ email, password, password_hash } as any)
         .onConflict("email")
         .ignore();
+    },
+
+    async register(email, password) {
+      const existing = await UserModel.query().findOne({ email });
+      if (existing) return toRecord(existing as any);
+      const password_hash = await hashPassword(password);
+      const created = await UserModel.query().insert({ email, password, password_hash } as any);
+      return toRecord(created as any);
     }
   };
 }
