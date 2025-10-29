@@ -8,6 +8,7 @@ export interface UsersRepository {
   findByCredentials(email: string, password: string): Promise<UserRecord | null>;
   ensureSeedUser(): Promise<void>;
   findByEmail(email: string): Promise<UserRecord | null>;
+  findById(id: string): Promise<UserRecord | null>;
 }
 
 const toRecord = (user: UserModel): UserRecord => ({
@@ -38,6 +39,11 @@ export function createUsersRepository(): UsersRepository {
 
     async findByEmail(email) {
       const user = await UserModel.query().findOne({ email });
+      return user ? toRecord(user) : null;
+    },
+
+    async findById(id) {
+      const user = await UserModel.query().findById(id);
       return user ? toRecord(user) : null;
     },
 

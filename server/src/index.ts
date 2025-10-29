@@ -5,6 +5,7 @@ import { createServer } from "http";
 
 import auth from "./routes/auth.js";
 import todos from "./routes/todos.js";
+import refresh from "./routes/refresh.js";
 import { requireAuth } from "./middleware/auth.js";
 import { initDb } from "./db/index.js";
 import { env } from "./config/env.js";
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use(morgan("dev"));
 
 app.use("/api", auth);
+app.use("/api", refresh);
 app.use("/api", requireAuth, todos);
 
 const httpServer = createServer(app);
