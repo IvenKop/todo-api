@@ -1,16 +1,24 @@
 export async function up(pgm: any): Promise<void> {
+  pgm.addColumn("todos", {
+    user_id: { type: "uuid", references: "users", onDelete: "CASCADE" }
+  });
+
+  pgm.createIndex("todos", "user_id");
+
   pgm.sql(`
-    ALTER TABLE IF EXISTS todos
-    ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES users(id) ON DELETE CASCADE
-  `);
-  pgm.sql(`
-    UPDATE todos
-    SET user_id = u.id
-    FROM (SELECT id FROM users WHERE email = 'user@mail.com' LIMIT 1) AS u
-    WHERE todos.user_id IS NULL
+    DO $$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM users WHERE email = 'user@mail.com') THEN
+        UPDATE todos
+        SET user_id = (SELECT id FROM users WHERE email = 'user@mail.com')
+        WHERE user_id IS NULL;
+      END IF;
+    END
+    $$;
   `);
 }
 
 export async function down(pgm: any): Promise<void> {
-  pgm.sql(`ALTER TABLE IF EXISTS todos DROP COLUMN IF EXISTS user_id`);
+  pgm.dropIndex("todos", "user_id");
+  pgm.dropColumn("todos", "user_id");
 }
