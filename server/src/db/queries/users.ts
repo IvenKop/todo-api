@@ -8,6 +8,8 @@ export interface UsersRepository {
   findByCredentials(email: string, password: string): Promise<UserRecord | null>;
   ensureSeedUser(): Promise<void>;
   findByEmail(email: string): Promise<UserRecord | null>;
+  findById(id: string): Promise<UserRecord | null>;
+  register(email: string, password: string): Promise<UserRecord>;
 }
 
 const toRecord = (user: UserModel): UserRecord => ({
@@ -41,6 +43,11 @@ export function createUsersRepository(): UsersRepository {
       return user ? toRecord(user) : null;
     },
 
+    async findById(id) {
+      const user = await UserModel.query().findById(id);
+      return user ? toRecord(user) : null;
+    },
+
     async ensureSeedUser() {
       const email = "user@mail.com";
       const password = "Aa1!abcd";
@@ -51,6 +58,14 @@ export function createUsersRepository(): UsersRepository {
         .insert({ email, password, password_hash } as any)
         .onConflict("email")
         .ignore();
+    },
+
+    async register(email, password) {
+      const existing = await UserModel.query().findOne({ email });
+      if (existing) return toRecord(existing as any);
+      const password_hash = await hashPassword(password);
+      const created = await UserModel.query().insert({ email, password, password_hash } as any);
+      return toRecord(created as any);
     }
   };
 }

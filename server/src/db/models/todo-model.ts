@@ -5,10 +5,9 @@ export class TodoModel extends BaseModel {
 
   declare id: string;
   text!: string;
-
   completed: boolean = false;
-
   created_at!: string;
+  declare user_id: string;
 
   static override get relationMappings() {
     return {};
@@ -22,9 +21,10 @@ export class TodoModel extends BaseModel {
         id: { type: "string", format: "uuid" },
         text: { type: "string", minLength: 1, maxLength: 200 },
         completed: { type: "boolean", default: false },
-        created_at: { type: "string", format: "date-time" }
+        created_at: { type: "string", format: "date-time" },
+        user_id: { type: "string", format: "uuid" }, // 👈 важно
       },
-      additionalProperties: false
+      additionalProperties: false,
     };
   }
 

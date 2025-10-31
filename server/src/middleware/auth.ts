@@ -6,13 +6,28 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const h = req.get("authorization") || "";
   const token = h.startsWith("Bearer ") ? h.slice(7) : "";
   if (isDev && token.startsWith("mock-token-")) {
+    req.user = { id: token.slice("mock-token-".length) || "mock-user" };
     return next();
   }
-  if (!token) return res.status(401).json({ error: "unauthorized" });
+
+  if (!token) {
+    return res.status(401).json({ error: "MISSING_TOKEN" });
+  }
+
   try {
-    verifyAccessToken(token);
+    const payload: any = verifyAccessToken(token);
+    const userId = payload?.sub;
+    if (!userId) {
+      return res.status(401).json({ error: "UNAUTHORIZED" });
+    }
+    req.user = { id: String(userId), email: payload?.email };
     next();
-  } catch {
-    res.status(401).json({ error: "unauthorized" });
+  } catch (err: unknown) {
+    const name =
+      typeof err === "object" && err && "name" in err ? (err as any).name : "";
+    if (name === "TokenExpiredError") {
+      return res.status(401).json({ error: "TOKEN_EXPIRED" });
+    }
+    return res.status(401).json({ error: "UNAUTHORIZED" });
   }
 }

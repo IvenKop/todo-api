@@ -22,6 +22,7 @@ app.use(express.json());
 app.use(morgan("dev"));
 
 app.use("/api", auth);
+
 app.use("/api", requireAuth, todos);
 
 const httpServer = createServer(app);
