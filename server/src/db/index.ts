@@ -8,6 +8,7 @@ import { knex as knexConn } from "../lib/db.js";
 import { BaseModel } from "./models/base-model.js";
 import { createTodosRepository } from "./queries/todos.js";
 import { createUsersRepository } from "./queries/users.js";
+import { connectMongo } from "../mongo/connection.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,6 +78,8 @@ export async function initDb() {
   if (flags.migrateOnStart) {
     await runMigrations({ direction: "up" });
   }
+
+  await connectMongo();
 
   const todos = createTodosRepository();
   const users = createUsersRepository();
