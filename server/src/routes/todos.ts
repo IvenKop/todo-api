@@ -21,9 +21,14 @@ router.get(
       const db = req.app.get("db") as Db;
 
       const typedFilter = filter as TodoFilter;
-      const { items, total } = await db.todos.list({ userId, filter: typedFilter, page, limit });
+      const { items, total, active_total, completed_total } = await db.todos.list({
+        userId,
+        filter: typedFilter,
+        page,
+        limit,
+      });
 
-      res.json({ items, total, page, limit });
+      res.json({ items, total, page, limit, active_total, completed_total });
     } catch (error) {
       next(error);
     }
@@ -41,7 +46,6 @@ router.post(
       const todo = await db.todos.create(userId, text);
 
       getIO().emit("todos:invalidate");
-
       res.status(201).json(todo);
     } catch (error) {
       next(error);
@@ -59,14 +63,12 @@ router.patch(
 
       const db = req.app.get("db") as Db;
       const todo = await db.todos.update(userId, id, data);
-
       if (!todo) {
         res.status(404).json({ error: "Not found" });
         return;
       }
 
       getIO().emit("todos:invalidate");
-
       res.json(todo);
     } catch (error) {
       next(error);
@@ -79,12 +81,10 @@ router.delete(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.user!.id;
-
       const db = req.app.get("db") as Db;
       const deleted = await db.todos.delete(userId, req.params.id);
 
       if (deleted) getIO().emit("todos:invalidate");
-
       res.status(deleted ? 204 : 404).end();
     } catch (error) {
       next(error);
@@ -115,12 +115,10 @@ router.delete(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.user!.id;
-
       const db = req.app.get("db") as Db;
       await db.todos.clearCompleted(userId);
 
       getIO().emit("todos:invalidate");
-
       res.status(204).end();
     } catch (error) {
       next(error);
