@@ -1,9 +1,11 @@
-import { TodoModel } from "../models/todo-model.js";
+import { TodoMongo, type TodoDoc } from "../../mongo/models/todo.js";
 
-export type TodoRecord = Pick<
-  TodoModel,
-  "id" | "text" | "completed" | "created_at"
->;
+export type TodoRecord = {
+  id: string;
+  text: string;
+  completed: boolean;
+  created_at: string;
+};
 
 export type TodoFilter = "all" | "active" | "completed";
 
@@ -34,63 +36,69 @@ export interface TodosRepository {
   ): Promise<number>;
 }
 
-const toRecord = (todo: TodoModel): TodoRecord => ({
-  id: todo.id,
-  text: todo.text,
-  completed: todo.completed,
-  created_at: todo.created_at,
+const toRecord = (doc: TodoDoc & { _id: any }): TodoRecord => ({
+  id: String(doc._id),
+  text: doc.text,
+  completed: doc.completed,
+  created_at: new Date(doc.created_at).toISOString(),
 });
 
 export function createTodosRepository(): TodosRepository {
   return {
     async list({ userId, filter, page, limit }) {
-      const query = TodoModel.query().where("user_id", userId).modify((qb) => {
-        if (filter === "active") qb.where("completed", false);
-        else if (filter === "completed") qb.where("completed", true);
-      });
+      const query: any = { user_id: userId };
+      if (filter === "active") query.completed = false;
+      else if (filter === "completed") query.completed = true;
 
-      const { results, total } = await query
-        .orderBy("created_at", "desc")
-        .page(page - 1, limit);
+      const [items, total] = await Promise.all([
+        TodoMongo.find(query)
+          .sort({ created_at: -1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean<TodoDoc[]>(),
+        TodoMongo.countDocuments(query),
+      ]);
 
-      return { items: results.map(toRecord), total };
+      return {
+        items: items.map(d => toRecord(d as any)),
+        total,
+      };
     },
 
     async create(userId, text) {
-      const todo = await TodoModel.query().insertAndFetch({ text, user_id: userId });
-      return toRecord(todo);
+      const created = await TodoMongo.create({
+        text,
+        user_id: userId,
+        completed: false,
+        created_at: new Date(),
+      });
+      return toRecord(created.toObject() as any);
     },
 
     async update(userId, id, data) {
-      if (Object.keys(data).length === 0) {
-        const existing = await TodoModel.query().findOne({ id, user_id: userId });
-        return existing ? toRecord(existing) : null;
-      }
-      const exists = await TodoModel.query().findOne({ id, user_id: userId });
-      if (!exists) return null;
-
-      const updated = await TodoModel.query().patchAndFetchById(id, data);
-      return updated ? toRecord(updated) : null;
+      const updated = await TodoMongo.findOneAndUpdate(
+        { _id: id, user_id: userId },
+        { $set: data },
+        { new: true, lean: true }
+      );
+      return updated ? toRecord(updated as any) : null;
     },
 
     async delete(userId, id) {
-      const deleted = await TodoModel.query()
-        .delete()
-        .where({ id, user_id: userId });
-      return deleted > 0;
+      const res = await TodoMongo.deleteOne({ _id: id, user_id: userId });
+      return res.deletedCount === 1;
     },
 
     async clearCompleted(userId) {
-      await TodoModel.query()
-        .delete()
-        .where({ user_id: userId, completed: true });
+      await TodoMongo.deleteMany({ user_id: userId, completed: true });
     },
 
     async updateBulk(userId, patch, ids) {
-      const qb = TodoModel.query().patch(patch).where("user_id", userId);
-      if (ids && ids.length > 0) qb.whereIn("id", ids);
-      const res = await qb;
-      return Number(res) || 0;
+      const filter: any = { user_id: userId };
+      if (ids && ids.length > 0) filter._id = { $in: ids };
+
+      const res = await TodoMongo.updateMany(filter, { $set: patch });
+      return res.modifiedCount ?? 0;
     },
   };
 }
