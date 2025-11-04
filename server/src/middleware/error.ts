@@ -13,7 +13,6 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     });
   }
 
-  // E11000 — дубль по уникальному индексу (user_id, norm)
   if (err && typeof err === "object" && (err as any).code === 11000) {
     return res.status(409).json({
       error: "DuplicateTodo",
