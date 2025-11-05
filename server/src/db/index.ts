@@ -9,6 +9,7 @@ import { BaseModel } from "./models/base-model.js";
 import { createTodosRepository } from "./queries/todos.js";
 import { createUsersRepository } from "./queries/users.js";
 import { connectMongo } from "../mongo/connection.js";
+import { TodoMongo } from "../mongo/models/todo.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,7 +32,7 @@ export async function runMigrations(opts: RunMigrationsOptions = {}) {
       ssl: { rejectUnauthorized: false },
     });
     await pool.query(
-      `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;`
+      `DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;`,
     );
     await pool.end();
   }
@@ -80,6 +81,11 @@ export async function initDb() {
   }
 
   await connectMongo();
+  try {
+    await TodoMongo.createIndexes();
+  } catch (e) {
+    console.warn("[mongo] createIndexes failed:", e);
+  }
 
   const todos = createTodosRepository();
   const users = createUsersRepository();

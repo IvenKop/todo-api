@@ -1,4 +1,5 @@
 import { TodoMongo, type TodoDoc } from "../../mongo/models/todo.js";
+import { normalizeText } from "../../lib/text.js";
 
 export type TodoRecord = {
   id: string;
@@ -15,14 +16,19 @@ export interface TodosRepository {
     filter: TodoFilter;
     page: number;
     limit: number;
-  }): Promise<{ items: TodoRecord[]; total: number }>;
+  }): Promise<{
+    items: TodoRecord[];
+    total: number;
+    active_total: number;
+    completed_total: number;
+  }>;
 
   create(userId: string, text: string): Promise<TodoRecord>;
 
   update(
     userId: string,
     id: string,
-    data: { text?: string; completed?: boolean }
+    data: { text?: string; completed?: boolean },
   ): Promise<TodoRecord | null>;
 
   delete(userId: string, id: string): Promise<boolean>;
@@ -50,24 +56,30 @@ export function createTodosRepository(): TodosRepository {
       if (filter === "active") query.completed = false;
       else if (filter === "completed") query.completed = true;
 
-      const [items, total] = await Promise.all([
+      const [items, total, active_total, completed_total] = await Promise.all([
         TodoMongo.find(query)
           .sort({ created_at: -1 })
           .skip((page - 1) * limit)
           .limit(limit)
           .lean<TodoDoc[]>(),
         TodoMongo.countDocuments(query),
+        TodoMongo.countDocuments({ user_id: userId, completed: false }),
+        TodoMongo.countDocuments({ user_id: userId, completed: true }),
       ]);
 
       return {
-        items: items.map(d => toRecord(d as any)),
+        items: items.map((d) => toRecord(d as any)),
         total,
+        active_total,
+        completed_total,
       };
     },
 
     async create(userId, text) {
+      const norm = normalizeText(text);
       const created = await TodoMongo.create({
         text,
+        norm,
         user_id: userId,
         completed: false,
         created_at: new Date(),
@@ -76,11 +88,18 @@ export function createTodosRepository(): TodosRepository {
     },
 
     async update(userId, id, data) {
+      const toSet: any = { ...data };
+      if (data.text !== undefined) {
+        toSet.text = data.text;
+        toSet.norm = normalizeText(data.text);
+      }
+
       const updated = await TodoMongo.findOneAndUpdate(
         { _id: id, user_id: userId },
-        { $set: data },
-        { new: true, lean: true }
+        { $set: toSet },
+        { new: true, lean: true },
       );
+
       return updated ? toRecord(updated as any) : null;
     },
 
@@ -97,7 +116,13 @@ export function createTodosRepository(): TodosRepository {
       const filter: any = { user_id: userId };
       if (ids && ids.length > 0) filter._id = { $in: ids };
 
-      const res = await TodoMongo.updateMany(filter, { $set: patch });
+      const $set: any = { ...patch };
+      if (patch.text !== undefined) {
+        $set.text = patch.text;
+        $set.norm = normalizeText(patch.text);
+      }
+
+      const res = await TodoMongo.updateMany(filter, { $set });
       return res.modifiedCount ?? 0;
     },
   };

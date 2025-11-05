@@ -9,6 +9,7 @@ import { requireAuth } from "./middleware/auth.js";
 import { initDb } from "./db/index.js";
 import { env } from "./config/env.js";
 import { initSocket } from "./realtime/socket.js";
+import { errorHandler } from "./middleware/error.js";
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use(morgan("dev"));
 app.use("/api", auth);
 
 app.use("/api", requireAuth, todos);
+app.use(errorHandler);
 
 const httpServer = createServer(app);
 
